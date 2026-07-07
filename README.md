@@ -1,7 +1,7 @@
 # LIBS Bone Classification using TensorFlow
 
 <p align="center">
-  <img src="results/generalization_probabilities.png" width="700">
+  <img src="results/spectra_classification.png" width="700">
 </p>
 
 <p align="center">
