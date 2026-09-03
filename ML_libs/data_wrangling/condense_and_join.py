@@ -21,70 +21,68 @@ def get_experiemnts(path_to_raw, show=False):
     return list_of_experiments
 
 
-def get_idx(experiment, seg, path_to_raw): 
-    """ get indexes of files with the desired part of the spectrum 
-        for a single experiment. 
-        experiment = path to experiment folder 
+def get_idx(experiment, seg, path_to_raw):
+    """ get indexes of files with the desired part of the spectrum
+        for a single experiment.
+        experiment = path to experiment folder
         seg = segment of spectrum : Merge0 or name of spectrometer
         return list of index and name of files in experiment """
-    
-    # Move to experiment folder and get list of files
-    os.chdir(f"{path_to_raw}/{experiment}/")
-    listOffile = os.listdir()
-    # get indexes of files with the desired part of the spectrum.: 
+
+    listOffile = os.listdir(os.path.join(path_to_raw, experiment))
+    # get indexes of files with the desired part of the spectrum.:
     idx =[]
     idx = [i for i, file in enumerate(listOffile) if seg in file]
     return idx,listOffile
 
 
 def condense(dat_to_con, path_to_raw, seg, test=False):
-    """ This function takes a list of experiments and condense all 
+    """ This function takes a list of experiments and condense all
     the spectra of that experiment in a single csv.
     This csv is stored in a experiment/condense.
-    data_to_con= list of experiments 
+    data_to_con= list of experiments
     seg = segment of the spectrum or Merge0
     test = Flag to return the last csv as DataFram
     """
     for experiment in dat_to_con:
         idx, listOffile = get_idx(experiment, seg, path_to_raw)
-        os.chdir(f"{path_to_raw}/{experiment}")
-        print(os.getcwd())
+        exp_dir = os.path.join(path_to_raw, experiment)
+        print(exp_dir)
         for i,index in enumerate(idx):
-            data = pd.read_csv(listOffile[index], delimiter=";", skiprows=2, header=None)
+            data = pd.read_csv(os.path.join(exp_dir, listOffile[index]), delimiter=";", skiprows=2, header=None)
             data.replace(',', '.', regex=True, inplace=True)
             data = data.astype(float)
             ## Drop duplicated wavelenght, if there are:
             data.drop_duplicates(subset=0, keep="first", inplace=True)
 
-            if i==0 : # Add wavelenght as column names : 
+            if i==0 : # Add wavelenght as column names :
                 condense_data = pd.DataFrame(columns=data.iloc[:,0])
 
             condense_data.loc[i]= np.asanyarray(data.iloc[:,1])
 
-        files = [listOffile[j] for j in idx] 
-        condense_data["file"] = files 
-        condense_data["experiment"] = experiment   
+        files = [listOffile[j] for j in idx]
+        condense_data["file"] = files
+        condense_data["experiment"] = experiment
 
-        os.makedirs("condensate", exist_ok=True)
-        condense_data.to_csv(f"./condensate/{experiment}_{seg}_condense.csv")
+        condensate_dir = os.path.join(exp_dir, "condensate")
+        os.makedirs(condensate_dir, exist_ok=True)
+        condense_data.to_csv(os.path.join(condensate_dir, f"{experiment}_{seg}_condense.csv"))
 
-    if test == True: 
-        return data, condense_data         
-    
-     
+    if test == True:
+        return data, condense_data
+
+
 def join_data(path_to_raw, dat_to_con, seg):
     """Join the condensed data form multiple experiments
     path_to_raw= Path to files
     seg = segment of the spectrum or Merge0
-    data_to_con= list of experiments needed for the model, 
-    tipically, 2 different experiments 
+    data_to_con= list of experiments needed for the model,
+    tipically, 2 different experiments
     return join df
-    """ 
-    
-    os.chdir(path_to_raw)
+    """
+
     dfs = {}
     for i, experiment in enumerate(dat_to_con,1):
-        dfs[f'df{i}'] = pd.read_csv(f"{experiment}/condensate/{experiment}_{seg}_condense.csv")
+        dfs[f'df{i}'] = pd.read_csv(os.path.join(path_to_raw, experiment, "condensate", f"{experiment}_{seg}_condense.csv"))
 
     df_final = pd.concat(dfs.values(), ignore_index=True)
     df_final.drop(columns="Unnamed: 0", inplace=True)
@@ -195,7 +193,7 @@ def filtter_noise_spec(df, peak, w, sigma):
     lim_max = peak_av+peak_av*sigma
     lim_min = peak_av-peak_av*sigma
 
-    print(f"average:{peak_av.round(2)}, min:{lim_max.round(2)}, max:{lim_min.round(2)}")
+    print(f"average:{peak_av.round(2)}, min:{lim_min.round(2)}, max:{lim_max.round(2)}")
 
 #    to_filtter =  (df_raw[max_col] < lim_max) & (df_raw[max_col] > lim_min)
     to_filtter =  (df_raw[max_col] > lim_min)
